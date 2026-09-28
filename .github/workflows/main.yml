@@ -1,0 +1,51 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main   
+
+jobs: 
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v2 
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # CORRECCIÓN: Ahora apunta a la carpeta del microservicio './banco'
+      - name: Build Docker Image
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/ms-core-banco:latest ./banco
+
+      # CORRECCIÓN: Sube la imagen del microservicio específico
+      - name: Push Docker Image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/ms-core-banco:latest
+
+      # OPTIMIZACIÓN: Usamos una acción oficial y segura para ejecutar comandos por SSH en tu EC2
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Loguearse a Docker Hub dentro de la EC2
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+            
+            # Descargar la nueva imagen
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/ms-core-banco:latest
+            
+            # Detener y remover el contenedor anterior si ya existía
+            docker stop ms-core-banco || true
+            docker rm ms-core-banco || true
+            
+            # Iniciar el nuevo contenedor mapeando el puerto de tu app Java (8090 según tu arquitectura)
+            docker run -d --name ms-core-banco -p 8090:8090 ${{ secrets.DOCKERHUB_USERNAME }}/ms-core-banco:latest
