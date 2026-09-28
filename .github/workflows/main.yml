@@ -1,8 +1,9 @@
-name: Build and push images
+name: Build and Push Docker Images
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   build:
@@ -26,4 +27,21 @@ jobs:
         with:
           context: ${{ matrix.context }}
           push: true
-          tags: dericesn/${{ matrix.image }}:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:latest
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+            cd ~
+            docker-compose pull ms-core-banco bff-cajeros
+            docker-compose up -d
+            docker image prune -f
