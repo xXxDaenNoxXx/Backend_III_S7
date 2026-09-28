@@ -1,0 +1,188 @@
+{
+  "info": {
+    "name": "Banco XYZ - Patrón BFF (Exp2 S5)",
+    "description": "Colección de pruebas para ms-core-banco y los 3 BFF (Web, Móvil, Cajeros). IMPORTANTE: los 3 BFF usan HTTPS con certificado autofirmado. En Postman, ve a Settings > General > desactiva 'SSL certificate verification' antes de correr las peticiones de Web, Móvil y Cajeros, o te dará error de certificado.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "cuentaId", "value": "101" }
+  ],
+  "item": [
+    {
+      "name": "ms-core-banco (http://localhost:8090)",
+      "item": [
+        {
+          "name": "Listar cuentas",
+          "request": {
+            "method": "GET",
+            "url": "http://localhost:8090/core/cuentas"
+          }
+        },
+        {
+          "name": "Obtener cuenta por id",
+          "request": {
+            "method": "GET",
+            "url": "http://localhost:8090/core/cuentas/{{cuentaId}}"
+          }
+        },
+        {
+          "name": "Movimientos de una cuenta",
+          "request": {
+            "method": "GET",
+            "url": "http://localhost:8090/core/cuentas/{{cuentaId}}/movimientos"
+          }
+        },
+        {
+          "name": "Retiro (uso interno, normalmente lo llama bff-cajeros)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": 1000\n}"
+            },
+            "url": "http://localhost:8090/core/cuentas/{{cuentaId}}/retiro"
+          }
+        }
+      ]
+    },
+    {
+      "name": "bff-web (https://localhost:8091)",
+      "item": [
+        {
+          "name": "Listar cuentas (con Basic Auth)",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                { "key": "username", "value": "web-client" },
+                { "key": "password", "value": "web123" }
+              ]
+            },
+            "url": "https://localhost:8091/web/cuentas"
+          }
+        },
+        {
+          "name": "Detalle de cuenta - datos completos + resumen (con Basic Auth)",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                { "key": "username", "value": "web-client" },
+                { "key": "password", "value": "web123" }
+              ]
+            },
+            "url": "https://localhost:8091/web/cuentas/{{cuentaId}}"
+          }
+        },
+        {
+          "name": "Detalle de cuenta SIN credenciales (esperado: 401)",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": "https://localhost:8091/web/cuentas/{{cuentaId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "bff-movil (https://localhost:8092)",
+      "item": [
+        {
+          "name": "Listar cuentas (con X-API-KEY)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-API-KEY", "value": "movil-secreto-2026" }
+            ],
+            "url": "https://localhost:8092/movil/cuentas"
+          }
+        },
+        {
+          "name": "Detalle de cuenta - datos livianos, últimos 3 movimientos (con X-API-KEY)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-API-KEY", "value": "movil-secreto-2026" }
+            ],
+            "url": "https://localhost:8092/movil/cuentas/{{cuentaId}}"
+          }
+        },
+        {
+          "name": "Detalle de cuenta SIN API Key (esperado: 401)",
+          "request": {
+            "method": "GET",
+            "url": "https://localhost:8092/movil/cuentas/{{cuentaId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "bff-cajeros (https://localhost:8094)",
+      "item": [
+        {
+          "name": "Consultar saldo (con Basic Auth)",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                { "key": "username", "value": "cajero-client" },
+                { "key": "password", "value": "cajero123" }
+              ]
+            },
+            "url": "https://localhost:8094/cajero/cuentas/{{cuentaId}}/saldo"
+          }
+        },
+        {
+          "name": "Retiro exitoso (con Basic Auth)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                { "key": "username", "value": "cajero-client" },
+                { "key": "password", "value": "cajero123" }
+              ]
+            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": 1000\n}"
+            },
+            "url": "https://localhost:8094/cajero/cuentas/{{cuentaId}}/retiro"
+          }
+        },
+        {
+          "name": "Retiro rechazado - saldo insuficiente (esperado: 400)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                { "key": "username", "value": "cajero-client" },
+                { "key": "password", "value": "cajero123" }
+              ]
+            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": 999999999\n}"
+            },
+            "url": "https://localhost:8094/cajero/cuentas/{{cuentaId}}/retiro"
+          }
+        },
+        {
+          "name": "Consultar saldo SIN credenciales (esperado: 401)",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": "https://localhost:8094/cajero/cuentas/{{cuentaId}}/saldo"
+          }
+        }
+      ]
+    }
+  ]
+}
