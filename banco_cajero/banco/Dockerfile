@@ -1,16 +1,16 @@
-FROM eclipse-temurin:17-jdk-alpine AS build
+# Etapa 1: Compilación con Maven oficial
+FROM maven:3.9-eclipse-temurin-17-alpine AS build
 WORKDIR /app
 
-# Copiar archivos de Maven y descargar dependencias
-COPY mvnw mvnw.cmd pom.xml ./
-COPY .mvn .mvn
-RUN chmod +x mvnw && ./mvnw dependency:go-offline -B || true
+# Descargar dependencias
+COPY pom.xml .
+RUN mvn dependency:go-offline -B || true
 
-# Copiar código fuente y compilar
+# Copiar código fuente y compilar JAR
 COPY src ./src
-RUN ./mvnw clean package -DskipTests
+RUN mvn clean package -DskipTests
 
-# Etapa final de ejecución
+# Etapa 2: Imagen final ligera
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
