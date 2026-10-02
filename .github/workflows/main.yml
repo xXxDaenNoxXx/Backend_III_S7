@@ -61,6 +61,9 @@ jobs:
           script: |
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
             cd ~
-            docker compose pull auth-server ms-core-banco bff-cajeros
-            docker compose up -d --no-build
+            # Amazon Linux suele traer "docker-compose" (binario) en vez del plugin "docker compose"
+            if docker compose version >/dev/null 2>&1; then DC="docker compose"; else DC="docker-compose"; fi
+            $DC pull auth-server ms-core-banco bff-cajeros
+            $DC up -d --no-build
             docker image prune -f
+
