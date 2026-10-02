@@ -1,21 +1,19 @@
-# 1. Usar una imagen oficial de Node.js
-FROM node:20-alpine
-
-# 2. Crear el directorio de trabajo dentro del contenedor
+FROM eclipse-temurin:17-jdk-alpine AS build
 WORKDIR /app
 
-# 3. Copiar los archivos de dependencias
-COPY package*.json ./
+# Copiar archivos de Maven y descargar dependencias
+COPY mvnw mvnw.cmd pom.xml ./
+COPY .mvn .mvn
+RUN chmod +x mvnw && ./mvnw dependency:go-offline -B || true
 
-# 4. Instalar dependencias
-RUN npm install --production
+# Copiar código fuente y compilar
+COPY src ./src
+RUN ./mvnw clean package -DskipTests
 
-# 5. Copiar el resto del código del microservicio
-COPY . .
+# Etapa final de ejecución
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
 
-# 6. Exponer el puerto correspondiente (Cambia el puerto según el servicio)
-# Para 'banco' usa 8090, 'banco_web' 8091, 'banco_movil' 8092, 'banco_cajero' 8094
-EXPOSE 8094 
-
-# 7. Comando para iniciar la aplicación
-CMD ["npm", "start"]
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
