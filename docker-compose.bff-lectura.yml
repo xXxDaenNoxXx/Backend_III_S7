@@ -1,0 +1,43 @@
+# =====================================================================
+# Servicios de lectura (bff-web y bff-movil).
+# Uso (cuando banco_web/ y banco_movil/ ya estan en el repo y migrados a OAuth2):
+#   docker compose -f docker-compose.yml -f docker-compose.bff-lectura.yml up -d --build
+# =====================================================================
+
+services:
+
+  bff-web:
+    build: ./banco_web/banco
+    image: dericesn/bff-web:latest
+    container_name: bff-web
+    depends_on:
+      auth-server:
+        condition: service_started
+      ms-core-banco:
+        condition: service_started
+    ports:
+      - "8091:8091"
+    environment:
+      CORE_BASE_URL: http://ms-core-banco:8090
+      AUTH_JWKS_URI: http://auth-server:9000/oauth2/jwks
+      AUTH_TOKEN_URI: http://auth-server:9000/oauth2/token
+      BFF_WEB_SERVICE_SECRET: ${BFF_WEB_SERVICE_SECRET:-websvc123}
+    restart: unless-stopped
+
+  bff-movil:
+    build: ./banco_movil/banco
+    image: dericesn/bff-movil:latest
+    container_name: bff-movil
+    depends_on:
+      auth-server:
+        condition: service_started
+      ms-core-banco:
+        condition: service_started
+    ports:
+      - "8092:8092"
+    environment:
+      CORE_BASE_URL: http://ms-core-banco:8090
+      AUTH_JWKS_URI: http://auth-server:9000/oauth2/jwks
+      AUTH_TOKEN_URI: http://auth-server:9000/oauth2/token
+      BFF_MOVIL_SERVICE_SECRET: ${BFF_MOVIL_SERVICE_SECRET:-movilsvc123}
+    restart: unless-stopped
